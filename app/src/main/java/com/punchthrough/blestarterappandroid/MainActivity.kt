@@ -15,7 +15,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import kotlinx.android.synthetic.main.activity_main.scan_button
+import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.alert
 import timber.log.Timber
 
@@ -41,6 +41,12 @@ class MainActivity : AppCompatActivity() {
         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
         .build()
 
+    private var isScanning = false
+        set(value) {
+            field = value
+            runOnUiThread { scan_button.text = if (value) "Stop Scan" else "Start Scan" }
+        }
+
     private val isLocationPermissionGranted
         get() = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
 
@@ -54,7 +60,7 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
-        scan_button.setOnClickListener { startBleScan() }
+        scan_button.setOnClickListener { if (isScanning) stopBleScan() else startBleScan() }
     }
 
     override fun onResume() {
@@ -106,7 +112,13 @@ class MainActivity : AppCompatActivity() {
             requestLocationPermission()
         } else {
             bleScanner.startScan(null, scanSettings, scanCallback)
+            isScanning = true
         }
+    }
+
+    private fun stopBleScan() {
+        bleScanner.stopScan(scanCallback)
+        isScanning = false
     }
 
     private fun requestLocationPermission() {
