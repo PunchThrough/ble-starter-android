@@ -15,6 +15,9 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.SimpleItemAnimator
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.alert
 import timber.log.Timber
@@ -61,6 +64,7 @@ class MainActivity : AppCompatActivity() {
             Timber.plant(Timber.DebugTree())
         }
         scan_button.setOnClickListener { if (isScanning) stopBleScan() else startBleScan() }
+        setupRecyclerView()
     }
 
     override fun onResume() {
@@ -138,6 +142,23 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }.show()
+        }
+    }
+
+    private fun setupRecyclerView() {
+        scan_results_recycler_view.apply {
+            adapter = scanResultAdapter
+            layoutManager = LinearLayoutManager(
+                this@MainActivity,
+                RecyclerView.VERTICAL,
+                false
+            )
+            isNestedScrollingEnabled = false
+        }
+
+        val animator = scan_results_recycler_view.itemAnimator
+        if (animator is SimpleItemAnimator) {
+            animator.supportsChangeAnimations = false
         }
     }
 
