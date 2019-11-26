@@ -50,6 +50,13 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread { scan_button.text = if (value) "Stop Scan" else "Start Scan" }
         }
 
+    private val scanResults = mutableListOf<ScanResult>()
+    private val scanResultAdapter: ScanResultAdapter by lazy {
+        ScanResultAdapter(scanResults) {
+            // TODO: Implement
+        }
+    }
+
     private val isLocationPermissionGranted
         get() = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
 
@@ -115,6 +122,8 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isLocationPermissionGranted) {
             requestLocationPermission()
         } else {
+            scanResults.clear()
+            scanResultAdapter.notifyDataSetChanged()
             bleScanner.startScan(null, scanSettings, scanCallback)
             isScanning = true
         }
@@ -168,9 +177,21 @@ class MainActivity : AppCompatActivity() {
 
     private val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
-            with(result.device) {
-                Timber.i("Found BLE device! Name: ${name ?: "Unnamed"}, address: $address")
+            val indexQuery = scanResults.indexOfFirst { it.device.address == result.device.address }
+            if (indexQuery != -1) { // A scan result already exists with the same address
+                scanResults[indexQuery] = result
+                scanResultAdapter.notifyItemChanged(indexQuery)
+            } else {
+                with(result.device) {
+                    Timber.i("Found BLE device! Name: ${name ?: "Unnamed"}, address: $address")
+                }
+                scanResults.add(result)
+                scanResultAdapter.notifyItemInserted(scanResults.size - 1)
             }
+        }
+
+        override fun onScanFailed(errorCode: Int) {
+            Timber.e("onScanFailed: code $errorCode")
         }
     }
 
