@@ -5,8 +5,13 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothProfile
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import timber.log.Timber
 import java.lang.ref.WeakReference
+
+// Taken from gatt_api.h and used as proof-of-concept only
+private const val GATT_MAX_MTU_SIZE = 517
 
 object ConnectionManager {
     private var bluetoothGatt: BluetoothGatt? = null
@@ -53,7 +58,9 @@ object ConnectionManager {
                 if (newState == BluetoothProfile.STATE_CONNECTED) {
                     Timber.w("Successfully connected to $deviceAddress")
                     bluetoothGatt = gatt
-                    listeners.forEach { it.get()?.onConnectionSetupComplete?.invoke(gatt) }
+                    Handler(Looper.getMainLooper()).post {
+                        bluetoothGatt?.discoverServices()
+                    }
                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     Timber.e("Successfully disconnected from $deviceAddress")
                     teardownConnection()
@@ -71,6 +78,33 @@ object ConnectionManager {
                 Timber.e("Error $status encountered for $deviceAddress! Disconnecting...")
                 teardownConnection()
             }
+        }
+
+        override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+            with(gatt) {
+                Timber.w("Discovered ${services.size} services for ${device.address}.")
+                printGattTable()
+                requestMtu(GATT_MAX_MTU_SIZE)
+                listeners.forEach { it.get()?.onConnectionSetupComplete?.invoke(this) }
+            }
+        }
+
+        override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
+            Timber.w("ATT MTU changed to $mtu, success: ${status == BluetoothGatt.GATT_SUCCESS}")
+        }
+    }
+
+    private fun BluetoothGatt.printGattTable() {
+        if (services.isEmpty()) {
+            Timber.i("No service and characteristic available, call discoverServices() first?")
+            return
+        }
+        services.forEach { service ->
+            val characteristicsTable = service.characteristics.joinToString(
+                separator = "\n|--",
+                prefix = "|--"
+            ) { it.uuid.toString() }
+            Timber.i("\nService ${service.uuid}\nCharacteristics:\n$characteristicsTable")
         }
     }
 }
