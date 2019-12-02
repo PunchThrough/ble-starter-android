@@ -18,6 +18,8 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
+import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
+import com.punchthrough.blestarterappandroid.ble.ConnectionManager
 import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.alert
 import timber.log.Timber
@@ -52,8 +54,14 @@ class MainActivity : AppCompatActivity() {
 
     private val scanResults = mutableListOf<ScanResult>()
     private val scanResultAdapter: ScanResultAdapter by lazy {
-        ScanResultAdapter(scanResults) {
-            // TODO: Implement
+        ScanResultAdapter(scanResults) { result ->
+            if (isScanning) {
+                stopBleScan()
+            }
+            with(result.device) {
+                Timber.w("Connecting to $address")
+                ConnectionManager.connect(this, this@MainActivity)
+            }
         }
     }
 
@@ -76,6 +84,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        ConnectionManager.registerListener(connectionEventListener)
         if (!bluetoothAdapter.isEnabled) {
             promptEnableBluetooth()
         }
@@ -85,7 +94,9 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         when (requestCode) {
             ENABLE_BLUETOOTH_REQUEST_CODE -> {
-                if (resultCode != Activity.RESULT_OK) promptEnableBluetooth()
+                if (resultCode != Activity.RESULT_OK) {
+                    promptEnableBluetooth()
+                }
             }
         }
     }
@@ -192,6 +203,26 @@ class MainActivity : AppCompatActivity() {
 
         override fun onScanFailed(errorCode: Int) {
             Timber.e("onScanFailed: code $errorCode")
+        }
+    }
+
+    private val connectionEventListener by lazy {
+        ConnectionEventListener().apply {
+            onConnectionSetupComplete = { _ ->
+                Intent(this@MainActivity, BleOperationsActivity::class.java).also {
+                    startActivity(it)
+                }
+                ConnectionManager.unregisterListener(this)
+            }
+            onDisconnect = {
+                runOnUiThread {
+                    alert {
+                        title = "Disconnected"
+                        message = "Disconnected or unable to connect to device."
+                        positiveButton("OK") {}
+                    }.show()
+                }
+            }
         }
     }
 
