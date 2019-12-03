@@ -109,18 +109,4 @@ object ConnectionManager {
             Timber.w("ATT MTU changed to $mtu, success: ${status == BluetoothGatt.GATT_SUCCESS}")
         }
     }
-
-    private fun BluetoothGatt.printGattTable() {
-        if (services.isEmpty()) {
-            Timber.i("No service and characteristic available, call discoverServices() first?")
-            return
-        }
-        services.forEach { service ->
-            val characteristicsTable = service.characteristics.joinToString(
-                separator = "\n|--",
-                prefix = "|--"
-            ) { it.uuid.toString() }
-            Timber.i("\nService ${service.uuid}\nCharacteristics:\n$characteristicsTable")
-        }
-    }
 }
