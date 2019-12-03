@@ -16,10 +16,7 @@
 
 package com.punchthrough.blestarterappandroid.ble
 
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothProfile
+import android.bluetooth.*
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
@@ -30,6 +27,9 @@ import java.lang.ref.WeakReference
 private const val GATT_MAX_MTU_SIZE = 517
 
 object ConnectionManager {
+    val services
+        get() = bluetoothGatt?.services
+
     private var bluetoothGatt: BluetoothGatt? = null
     private var listeners: MutableSet<WeakReference<ConnectionEventListener>> = mutableSetOf()
 
@@ -39,10 +39,12 @@ object ConnectionManager {
     }
 
     fun teardownConnection() {
-        Timber.w("Disconnecting from ${bluetoothGatt?.device?.address}")
-        bluetoothGatt?.close()
-        bluetoothGatt = null
-        listeners.forEach { it.get()?.onDisconnect?.invoke() }
+        if (bluetoothGatt != null) {
+            Timber.w("Disconnecting from ${bluetoothGatt?.device?.address}")
+            bluetoothGatt?.close()
+            bluetoothGatt = null
+            listeners.forEach { it.get()?.onDisconnect?.invoke() }
+        }
     }
 
     fun registerListener(listener: ConnectionEventListener) {
@@ -64,6 +66,16 @@ object ConnectionManager {
             listeners.remove(it)
             Timber.d("Removed listener ${it.get()}, ${listeners.size} listeners total")
         }
+    }
+
+    fun readCharacteristic(characteristic: BluetoothGattCharacteristic) {
+        bluetoothGatt?.let { gatt ->
+            if (characteristic.isReadable()) {
+                gatt.readCharacteristic(characteristic)
+            } else {
+                Timber.e("Attempting to read ${characteristic.uuid} that isn't readable!")
+            }
+        } ?: error("Not connected to a BLE device!")
     }
 
     private val callback = object : BluetoothGattCallback() {
@@ -107,6 +119,27 @@ object ConnectionManager {
 
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             Timber.w("ATT MTU changed to $mtu, success: ${status == BluetoothGatt.GATT_SUCCESS}")
+        }
+
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            with(characteristic) {
+                when (status) {
+                    BluetoothGatt.GATT_SUCCESS -> {
+                        Timber.i("Read characteristic $uuid | value: ${value.toHexString()}")
+                        listeners.forEach { it.get()?.onCharacteristicRead?.invoke(this) }
+                    }
+                    BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
+                        Timber.e("Read not permitted for $uuid!")
+                    }
+                    else -> {
+                        Timber.e("Characteristic read failed for $uuid, error: $status")
+                    }
+                }
+            }
         }
     }
 }
