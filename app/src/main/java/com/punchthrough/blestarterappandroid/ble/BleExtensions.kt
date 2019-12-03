@@ -57,3 +57,6 @@ fun BluetoothGattCharacteristic.isNotifiable(): Boolean =
 fun BluetoothGattCharacteristic.containsProperty(property: Int): Boolean {
     return properties and property != 0
 }
+
+fun ByteArray.toHexString(): String =
+    joinToString(separator = " ", prefix = "0x") { String.format("%02X", it) }
