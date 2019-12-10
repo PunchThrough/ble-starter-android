@@ -82,6 +82,22 @@ object ConnectionManager {
         } ?: error("Not connected to a BLE device!")
     }
 
+    fun writeCharacteristic(characteristic: BluetoothGattCharacteristic, payload: ByteArray) {
+        val writeType = when {
+            characteristic.isWritable() -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            characteristic.isWritableWithoutResponse() -> {
+                BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            }
+            else -> error("Characteristic ${characteristic.uuid} cannot be written to")
+        }
+
+        bluetoothGatt?.let { gatt ->
+            characteristic.writeType = writeType
+            characteristic.value = payload
+            gatt.writeCharacteristic(characteristic)
+        } ?: error("Not connected to a BLE device!")
+    }
+
     private val callback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             val deviceAddress = gatt.device.address
@@ -141,6 +157,27 @@ object ConnectionManager {
                     }
                     else -> {
                         Timber.e("Characteristic read failed for $uuid, error: $status")
+                    }
+                }
+            }
+        }
+
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            status: Int
+        ) {
+            with(characteristic) {
+                when (status) {
+                    BluetoothGatt.GATT_SUCCESS -> {
+                        Timber.i("Wrote to characteristic $uuid | value: ${value.toHexString()}")
+                        listeners.forEach { it.get()?.onCharacteristicWrite?.invoke(this) }
+                    }
+                    BluetoothGatt.GATT_WRITE_NOT_PERMITTED -> {
+                        Timber.e("Write not permitted for $uuid!")
+                    }
+                    else -> {
+                        Timber.e("Characteristic write failed for $uuid, error: $status")
                     }
                 }
             }
