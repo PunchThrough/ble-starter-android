@@ -20,7 +20,9 @@ import android.bluetooth.le.ScanResult
 import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import kotlinx.android.synthetic.main.row_scan_result.view.*
+import kotlinx.android.synthetic.main.row_scan_result.view.device_name
+import kotlinx.android.synthetic.main.row_scan_result.view.mac_address
+import kotlinx.android.synthetic.main.row_scan_result.view.signal_strength
 import org.jetbrains.anko.layoutInflater
 
 class ScanResultAdapter(
