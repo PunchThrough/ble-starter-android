@@ -18,7 +18,10 @@ package com.punchthrough.blestarterappandroid.ble
 
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import timber.log.Timber
+
+// BluetoothGatt
 
 fun BluetoothGatt.printGattTable() {
     if (services.isEmpty()) {
@@ -33,6 +36,8 @@ fun BluetoothGatt.printGattTable() {
         Timber.i("\nService ${service.uuid}\nCharacteristics:\n$characteristicsTable")
     }
 }
+
+// BluetoothGattCharacteristic
 
 fun BluetoothGattCharacteristic.printProperties(): String = mutableListOf<String>().apply {
     if (isReadable()) add("READABLE")
@@ -57,9 +62,26 @@ fun BluetoothGattCharacteristic.isIndicatable(): Boolean =
 fun BluetoothGattCharacteristic.isNotifiable(): Boolean =
     containsProperty(BluetoothGattCharacteristic.PROPERTY_NOTIFY)
 
-fun BluetoothGattCharacteristic.containsProperty(property: Int): Boolean {
-    return properties and property != 0
-}
+fun BluetoothGattCharacteristic.containsProperty(property: Int): Boolean =
+    properties and property != 0
+
+// BluetoothGattDescriptor
+
+fun BluetoothGattDescriptor.printProperties(): String = mutableListOf<String>().apply {
+    if (isReadable()) add("READABLE")
+    if (isWritable()) add("WRITABLE")
+}.joinToString()
+
+fun BluetoothGattDescriptor.isReadable(): Boolean =
+    containsPermission(BluetoothGattDescriptor.PERMISSION_READ)
+
+fun BluetoothGattDescriptor.isWritable(): Boolean =
+    containsPermission(BluetoothGattDescriptor.PERMISSION_WRITE)
+
+fun BluetoothGattDescriptor.containsPermission(permission: Int): Boolean =
+    permissions and permission != 0
+
+// ByteArray
 
 fun ByteArray.toHexString(): String =
     joinToString(separator = " ", prefix = "0x") { String.format("%02X", it) }

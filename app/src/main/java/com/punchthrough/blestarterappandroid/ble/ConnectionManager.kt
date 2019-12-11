@@ -20,6 +20,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.os.Handler
@@ -95,6 +96,27 @@ object ConnectionManager {
             characteristic.writeType = writeType
             characteristic.value = payload
             gatt.writeCharacteristic(characteristic)
+        } ?: error("Not connected to a BLE device!")
+    }
+
+    fun readDescriptor(descriptor: BluetoothGattDescriptor) {
+        bluetoothGatt?.let { gatt ->
+            if (descriptor.isReadable()) {
+                gatt.readDescriptor(descriptor)
+            } else {
+                Timber.e("Attempting to read ${descriptor.uuid} that isn't readable!")
+            }
+        } ?: error("Not connected to a BLE device!")
+    }
+
+    fun writeDescriptor(descriptor: BluetoothGattDescriptor, payload: ByteArray) {
+        bluetoothGatt?.let { gatt ->
+            if (descriptor.isWritable()) {
+                descriptor.value = payload
+                gatt.writeDescriptor(descriptor)
+            } else {
+                Timber.e("Attempting to write to ${descriptor.uuid} that isn't writable!")
+            }
         } ?: error("Not connected to a BLE device!")
     }
 
@@ -178,6 +200,48 @@ object ConnectionManager {
                     }
                     else -> {
                         Timber.e("Characteristic write failed for $uuid, error: $status")
+                    }
+                }
+            }
+        }
+
+        override fun onDescriptorRead(
+            gatt: BluetoothGatt,
+            descriptor: BluetoothGattDescriptor,
+            status: Int
+        ) {
+            with(descriptor) {
+                when (status) {
+                    BluetoothGatt.GATT_SUCCESS -> {
+                        Timber.i("Read descriptor $uuid | value: ${value.toHexString()}")
+                        listeners.forEach { it.get()?.onDescriptorRead?.invoke(this) }
+                    }
+                    BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
+                        Timber.e("Read not permitted for $uuid!")
+                    }
+                    else -> {
+                        Timber.e("Descriptor read failed for $uuid, error: $status")
+                    }
+                }
+            }
+        }
+
+        override fun onDescriptorWrite(
+            gatt: BluetoothGatt,
+            descriptor: BluetoothGattDescriptor,
+            status: Int
+        ) {
+            with(descriptor) {
+                when (status) {
+                    BluetoothGatt.GATT_SUCCESS -> {
+                        Timber.i("Wrote to descriptor $uuid | value: ${value.toHexString()}")
+                        listeners.forEach { it.get()?.onDescriptorWrite?.invoke(this) }
+                    }
+                    BluetoothGatt.GATT_WRITE_NOT_PERMITTED -> {
+                        Timber.e("Write not permitted for $uuid!")
+                    }
+                    else -> {
+                        Timber.e("Descriptor write failed for $uuid, error: $status")
                     }
                 }
             }
