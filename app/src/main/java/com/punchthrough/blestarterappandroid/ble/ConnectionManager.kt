@@ -21,6 +21,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothProfile
 import android.content.Context
 import android.os.Handler
@@ -36,7 +37,7 @@ private const val GATT_MAX_MTU_SIZE = 517
 private const val CCC_DESCRIPTOR_UUID = "00002902-0000-1000-8000-00805F9B34FB"
 
 object ConnectionManager {
-    val services
+    val services: List<BluetoothGattService>?
         get() = bluetoothGatt?.services
 
     private var bluetoothGatt: BluetoothGatt? = null
