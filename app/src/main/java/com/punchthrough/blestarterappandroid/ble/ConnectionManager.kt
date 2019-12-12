@@ -23,7 +23,10 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Handler
 import android.os.Looper
 import timber.log.Timber
@@ -46,6 +49,13 @@ object ConnectionManager {
     fun connect(device: BluetoothDevice, context: Context) {
         Timber.w("Connecting to ${device.address}")
         device.connectGatt(context, false, callback)
+    }
+
+    fun listenToBondStateChanges(context: Context) {
+        context.applicationContext.registerReceiver(
+            broadcastReceiver,
+            IntentFilter(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+        )
     }
 
     fun teardownConnection() {
@@ -298,6 +308,28 @@ object ConnectionManager {
                     }
                 }
             }
+        }
+    }
+
+    private val broadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            with(intent) {
+                if (action == BluetoothDevice.ACTION_BOND_STATE_CHANGED) {
+                    val device = getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    val previousBondState = getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1)
+                    val bondState = getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)
+                    val bondTransition = "${previousBondState.toBondStateDescription()} to " +
+                        bondState.toBondStateDescription()
+                    Timber.w("${device?.address} bond state changed | $bondTransition")
+                }
+            }
+        }
+
+        private fun Int.toBondStateDescription() = when(this) {
+            BluetoothDevice.BOND_BONDED -> "BONDED"
+            BluetoothDevice.BOND_BONDING -> "BONDING"
+            BluetoothDevice.BOND_NONE -> "NOT BONDED"
+            else -> "ERROR: $this"
         }
     }
 }
