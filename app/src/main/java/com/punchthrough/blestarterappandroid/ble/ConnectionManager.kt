@@ -27,9 +27,13 @@ import android.os.Handler
 import android.os.Looper
 import timber.log.Timber
 import java.lang.ref.WeakReference
+import java.util.Locale
+import java.util.UUID
 
-// Taken from gatt_api.h and used as proof-of-concept only
+/** Maximum BLE MTU size as defined in gatt_api.h. */
 private const val GATT_MAX_MTU_SIZE = 517
+/** UUID of the Client Characteristic Configuration Descriptor (0x2902). */
+private const val CCC_DESCRIPTOR_UUID = "00002902-0000-1000-8000-00805F9B34FB"
 
 object ConnectionManager {
     val services
@@ -111,13 +115,51 @@ object ConnectionManager {
 
     fun writeDescriptor(descriptor: BluetoothGattDescriptor, payload: ByteArray) {
         bluetoothGatt?.let { gatt ->
-            if (descriptor.isWritable()) {
+            if (descriptor.isWritable() ||
+                descriptor.uuid.toString().toUpperCase(Locale.US) == CCC_DESCRIPTOR_UUID
+            ) {
                 descriptor.value = payload
                 gatt.writeDescriptor(descriptor)
             } else {
                 Timber.e("Attempting to write to ${descriptor.uuid} that isn't writable!")
             }
         } ?: error("Not connected to a BLE device!")
+    }
+
+    fun enableNotifications(characteristic: BluetoothGattCharacteristic) {
+        val cccdUuid = UUID.fromString(CCC_DESCRIPTOR_UUID)
+        val payload = when {
+            characteristic.isIndicatable() -> BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+            characteristic.isNotifiable() -> BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+            else -> {
+                Timber.e("${characteristic.uuid} doesn't support notifications/indications")
+                return
+            }
+        }
+
+        characteristic.getDescriptor(cccdUuid)?.let { cccDescriptor ->
+            if (bluetoothGatt?.setCharacteristicNotification(characteristic, true) == false) {
+                Timber.e("setCharacteristicNotification failed for ${characteristic.uuid}")
+                return
+            }
+            writeDescriptor(cccDescriptor, payload)
+        } ?: Timber.e("${characteristic.uuid} doesn't contain the CCC descriptor!")
+    }
+
+    fun disableNotifications(characteristic: BluetoothGattCharacteristic) {
+        if (!characteristic.isNotifiable() && !characteristic.isIndicatable()) {
+            Timber.e("${characteristic.uuid} doesn't support indications/notifications")
+            return
+        }
+
+        val cccdUuid = UUID.fromString(CCC_DESCRIPTOR_UUID)
+        characteristic.getDescriptor(cccdUuid)?.let { cccDescriptor ->
+            if (bluetoothGatt?.setCharacteristicNotification(characteristic, false) == false) {
+                Timber.e("setCharacteristicNotification failed for ${characteristic.uuid}")
+                return
+            }
+            writeDescriptor(cccDescriptor, BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
+        } ?: Timber.e("${characteristic.uuid} doesn't contain the CCC descriptor!")
     }
 
     private val callback = object : BluetoothGattCallback() {
@@ -202,6 +244,16 @@ object ConnectionManager {
                         Timber.e("Characteristic write failed for $uuid, error: $status")
                     }
                 }
+            }
+        }
+
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic
+        ) {
+            with(characteristic) {
+                Timber.i("Characteristic $uuid changed | value: ${value.toHexString()}")
+                listeners.forEach { it.get()?.onCharacteristicChanged?.invoke(this) }
             }
         }
 

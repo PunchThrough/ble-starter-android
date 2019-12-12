@@ -32,8 +32,19 @@ fun BluetoothGatt.printGattTable() {
         val characteristicsTable = service.characteristics.joinToString(
             separator = "\n|--",
             prefix = "|--"
-        ) { "${it.uuid}: ${it.printProperties()}" }
-        Timber.i("\nService ${service.uuid}\nCharacteristics:\n$characteristicsTable")
+        ) { char ->
+            var description = "${char.uuid}: ${char.printProperties()}"
+            if (char.descriptors.isNotEmpty()) {
+                description += "\n" + char.descriptors.joinToString(
+                    separator = "\n|------",
+                    prefix = "|------"
+                ) { descriptor ->
+                    "${descriptor.uuid}: ${descriptor.printProperties()}"
+                }
+            }
+            description
+        }
+        Timber.i("Service ${service.uuid}\nCharacteristics:\n$characteristicsTable")
     }
 }
 
@@ -45,6 +56,7 @@ fun BluetoothGattCharacteristic.printProperties(): String = mutableListOf<String
     if (isWritableWithoutResponse()) add ("WRITABLE WITHOUT RESPONSE")
     if (isIndicatable()) add("INDICATABLE")
     if (isNotifiable()) add("NOTIFIABLE")
+    if (isEmpty()) add("EMPTY")
 }.joinToString()
 
 fun BluetoothGattCharacteristic.isReadable(): Boolean =
@@ -70,6 +82,7 @@ fun BluetoothGattCharacteristic.containsProperty(property: Int): Boolean =
 fun BluetoothGattDescriptor.printProperties(): String = mutableListOf<String>().apply {
     if (isReadable()) add("READABLE")
     if (isWritable()) add("WRITABLE")
+    if (isEmpty()) add("EMPTY")
 }.joinToString()
 
 fun BluetoothGattDescriptor.isReadable(): Boolean =
