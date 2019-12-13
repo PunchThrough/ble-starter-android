@@ -16,14 +16,19 @@
 
 package com.punchthrough.blestarterappandroid
 
+import android.bluetooth.BluetoothDevice
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
 
 class BleOperationsActivity : AppCompatActivity() {
 
+    private lateinit var device: BluetoothDevice
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
+            ?: error("Missing BluetoothDevice from MainActivity!")
         setContentView(R.layout.activity_ble_operations)
     }
 

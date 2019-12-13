@@ -19,6 +19,7 @@ package com.punchthrough.blestarterappandroid
 import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
@@ -225,8 +226,9 @@ class MainActivity : AppCompatActivity() {
 
     private val connectionEventListener by lazy {
         ConnectionEventListener().apply {
-            onConnectionSetupComplete = { _ ->
+            onConnectionSetupComplete = { gatt ->
                 Intent(this@MainActivity, BleOperationsActivity::class.java).also {
+                    it.putExtra(BluetoothDevice.EXTRA_DEVICE, gatt.device)
                     startActivity(it)
                 }
                 ConnectionManager.unregisterListener(this)
