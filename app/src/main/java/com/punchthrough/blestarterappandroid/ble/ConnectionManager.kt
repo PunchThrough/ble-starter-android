@@ -59,11 +59,12 @@ object ConnectionManager {
     }
 
     fun teardownConnection() {
-        if (bluetoothGatt != null) {
-            Timber.w("Disconnecting from ${bluetoothGatt?.device?.address}")
-            bluetoothGatt?.close()
+        bluetoothGatt?.let { gatt ->
+            val device = gatt.device
+            Timber.w("Disconnecting from ${device.address}")
+            gatt.close()
             bluetoothGatt = null
-            listeners.forEach { it.get()?.onDisconnect?.invoke() }
+            listeners.forEach { it.get()?.onDisconnect?.invoke(device) }
         }
     }
 
@@ -214,6 +215,7 @@ object ConnectionManager {
 
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             Timber.w("ATT MTU changed to $mtu, success: ${status == BluetoothGatt.GATT_SUCCESS}")
+            listeners.forEach { it.get()?.onMtuChanged?.invoke(gatt.device, mtu) }
         }
 
         override fun onCharacteristicRead(
@@ -225,7 +227,7 @@ object ConnectionManager {
                 when (status) {
                     BluetoothGatt.GATT_SUCCESS -> {
                         Timber.i("Read characteristic $uuid | value: ${value.toHexString()}")
-                        listeners.forEach { it.get()?.onCharacteristicRead?.invoke(this) }
+                        listeners.forEach { it.get()?.onCharacteristicRead?.invoke(gatt.device, this) }
                     }
                     BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
                         Timber.e("Read not permitted for $uuid!")
@@ -246,7 +248,7 @@ object ConnectionManager {
                 when (status) {
                     BluetoothGatt.GATT_SUCCESS -> {
                         Timber.i("Wrote to characteristic $uuid | value: ${value.toHexString()}")
-                        listeners.forEach { it.get()?.onCharacteristicWrite?.invoke(this) }
+                        listeners.forEach { it.get()?.onCharacteristicWrite?.invoke(gatt.device, this) }
                     }
                     BluetoothGatt.GATT_WRITE_NOT_PERMITTED -> {
                         Timber.e("Write not permitted for $uuid!")
@@ -264,7 +266,7 @@ object ConnectionManager {
         ) {
             with(characteristic) {
                 Timber.i("Characteristic $uuid changed | value: ${value.toHexString()}")
-                listeners.forEach { it.get()?.onCharacteristicChanged?.invoke(this) }
+                listeners.forEach { it.get()?.onCharacteristicChanged?.invoke(gatt.device, this) }
             }
         }
 
@@ -277,7 +279,7 @@ object ConnectionManager {
                 when (status) {
                     BluetoothGatt.GATT_SUCCESS -> {
                         Timber.i("Read descriptor $uuid | value: ${value.toHexString()}")
-                        listeners.forEach { it.get()?.onDescriptorRead?.invoke(this) }
+                        listeners.forEach { it.get()?.onDescriptorRead?.invoke(gatt.device, this) }
                     }
                     BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
                         Timber.e("Read not permitted for $uuid!")
@@ -298,7 +300,12 @@ object ConnectionManager {
                 when (status) {
                     BluetoothGatt.GATT_SUCCESS -> {
                         Timber.i("Wrote to descriptor $uuid | value: ${value.toHexString()}")
-                        listeners.forEach { it.get()?.onDescriptorWrite?.invoke(this) }
+
+                        if (uuid.toString().toUpperCase(Locale.US) == CCC_DESCRIPTOR_UUID) {
+                            onCccdWrite(gatt, value, characteristic)
+                        } else {
+                            listeners.forEach { it.get()?.onDescriptorWrite?.invoke(gatt.device, this) }
+                        }
                     }
                     BluetoothGatt.GATT_WRITE_NOT_PERMITTED -> {
                         Timber.e("Write not permitted for $uuid!")
@@ -306,6 +313,43 @@ object ConnectionManager {
                     else -> {
                         Timber.e("Descriptor write failed for $uuid, error: $status")
                     }
+                }
+            }
+        }
+
+        private fun onCccdWrite(
+            gatt: BluetoothGatt,
+            value: ByteArray,
+            characteristic: BluetoothGattCharacteristic
+        ) {
+            val charUuid = characteristic.uuid
+            val notificationsEnabled =
+                value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) ||
+                    value.contentEquals(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE)
+            val notificationsDisabled =
+                value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
+
+            when {
+                notificationsEnabled -> {
+                    Timber.w("Notifications or indications ENABLED on $charUuid")
+                    listeners.forEach {
+                        it.get()?.onNotificationsEnabled?.invoke(
+                            gatt.device,
+                            characteristic
+                        )
+                    }
+                }
+                notificationsDisabled -> {
+                    Timber.w("Notifications or indications DISABLED on $charUuid")
+                    listeners.forEach {
+                        it.get()?.onNotificationsDisabled?.invoke(
+                            gatt.device,
+                            characteristic
+                        )
+                    }
+                }
+                else -> {
+                    Timber.e("Unexpected value ${value.toHexString()} on CCCD of $charUuid")
                 }
             }
         }
