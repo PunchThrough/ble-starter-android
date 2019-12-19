@@ -16,4 +16,5 @@
 
 <resources>
     <string name="app_name">BLE Starter</string>
+    <string name="ble_playground">BLE Playground</string>
 </resources>

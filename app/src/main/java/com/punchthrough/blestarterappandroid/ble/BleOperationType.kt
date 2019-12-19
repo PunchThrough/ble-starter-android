@@ -17,13 +17,14 @@
 package com.punchthrough.blestarterappandroid.ble
 
 import android.bluetooth.BluetoothDevice
+import android.content.Context
 import java.util.UUID
 
 /** Abstract sealed class representing a type of BLE operation */
 sealed class BleOperationType
 
 /** Connect to [device] and perform service discovery */
-data class Connect(val device: BluetoothDevice) : BleOperationType()
+data class Connect(val device: BluetoothDevice, val context: Context) : BleOperationType()
 
 /** Disconnect from [device] and release all connection resources */
 data class Disconnect(val device: BluetoothDevice) : BleOperationType()
