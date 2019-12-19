@@ -60,6 +60,19 @@ fun BluetoothGatt.findCharacteristic(uuid: UUID): BluetoothGattCharacteristic? {
     return null
 }
 
+fun BluetoothGatt.findDescriptor(uuid: UUID): BluetoothGattDescriptor? {
+    services?.forEach { service ->
+        service.characteristics.forEach { characteristic ->
+            characteristic.descriptors?.firstOrNull { descriptor ->
+                descriptor.uuid == uuid
+            }?.let { matchingDescriptor ->
+                return matchingDescriptor
+            }
+        }
+    }
+    return null
+}
+
 // BluetoothGattCharacteristic
 
 fun BluetoothGattCharacteristic.printProperties(): String = mutableListOf<String>().apply {
