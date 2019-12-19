@@ -33,6 +33,7 @@ data class Disconnect(val device: BluetoothDevice) : BleOperationType()
 data class CharacteristicWrite(
     val device: BluetoothDevice,
     val characteristicUuid: UUID,
+    val writeType: Int,
     val payload: ByteArray
 ) : BleOperationType() {
     override fun equals(other: Any?): Boolean {
@@ -43,6 +44,7 @@ data class CharacteristicWrite(
 
         if (device != other.device) return false
         if (characteristicUuid != other.characteristicUuid) return false
+        if (writeType != other.writeType) return false
         if (!payload.contentEquals(other.payload)) return false
 
         return true
@@ -51,6 +53,7 @@ data class CharacteristicWrite(
     override fun hashCode(): Int {
         var result = device.hashCode()
         result = 31 * result + characteristicUuid.hashCode()
+        result = 31 * result + writeType
         result = 31 * result + payload.contentHashCode()
         return result
     }

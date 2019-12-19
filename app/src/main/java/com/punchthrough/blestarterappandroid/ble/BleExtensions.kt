@@ -20,6 +20,7 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import timber.log.Timber
+import java.util.UUID
 
 // BluetoothGatt
 
@@ -46,6 +47,17 @@ fun BluetoothGatt.printGattTable() {
         }
         Timber.i("Service ${service.uuid}\nCharacteristics:\n$characteristicsTable")
     }
+}
+
+fun BluetoothGatt.findCharacteristic(uuid: UUID): BluetoothGattCharacteristic? {
+    services?.forEach { service ->
+        service.characteristics?.firstOrNull { characteristic ->
+            characteristic.uuid == uuid
+        }?.let { matchingCharacteristic ->
+            return matchingCharacteristic
+        }
+    }
+    return null
 }
 
 // BluetoothGattCharacteristic
