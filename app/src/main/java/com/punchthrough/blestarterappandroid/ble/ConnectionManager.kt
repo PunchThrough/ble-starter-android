@@ -31,11 +31,9 @@ import android.os.Handler
 import android.os.Looper
 import timber.log.Timber
 import java.lang.ref.WeakReference
-import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.locks.ReentrantLock
 
 private const val GATT_MIN_MTU_SIZE = 23
 /** Maximum BLE MTU size as defined in gatt_api.h. */
@@ -47,7 +45,6 @@ object ConnectionManager {
 
     private val deviceGattMap = ConcurrentHashMap<BluetoothDevice, BluetoothGatt>()
     private val operationQueue = ConcurrentLinkedQueue<BleOperationType>()
-    private val operationLock = ReentrantLock()
     private var pendingOperation: BleOperationType? = null
 
     fun servicesOnDevice(device: BluetoothDevice): List<BluetoothGattService>? =
@@ -190,15 +187,15 @@ object ConnectionManager {
     @Synchronized
     private fun enqueueOperation(operation: BleOperationType) {
         operationQueue.add(operation)
-        if (!operationLock.isLocked) {
+        if (pendingOperation == null) {
             doNextOperation()
         }
     }
 
     @Synchronized
     private fun signalEndOfOperation() {
+        Timber.d("End of $pendingOperation")
         pendingOperation = null
-        operationLock.unlock()
         if (operationQueue.isNotEmpty()) {
             doNextOperation()
         }
@@ -210,9 +207,10 @@ object ConnectionManager {
      */
     @Synchronized
     private fun doNextOperation() {
-        if (operationLock.isLocked) return
-
-        operationLock.lock()
+        if (pendingOperation != null) {
+            Timber.e("doNextOperation() called when an operation is pending! Aborting.")
+            return
+        }
 
         val operation = operationQueue.poll() ?: run {
             Timber.v("Operation queue empty, returning")
