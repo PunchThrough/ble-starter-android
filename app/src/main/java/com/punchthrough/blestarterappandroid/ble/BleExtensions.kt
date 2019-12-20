@@ -82,7 +82,7 @@ fun BluetoothGatt.findDescriptor(uuid: UUID): BluetoothGattDescriptor? {
 fun BluetoothGattCharacteristic.printProperties(): String = mutableListOf<String>().apply {
     if (isReadable()) add("READABLE")
     if (isWritable()) add("WRITABLE")
-    if (isWritableWithoutResponse()) add ("WRITABLE WITHOUT RESPONSE")
+    if (isWritableWithoutResponse()) add("WRITABLE WITHOUT RESPONSE")
     if (isIndicatable()) add("INDICATABLE")
     if (isNotifiable()) add("NOTIFIABLE")
     if (isEmpty()) add("EMPTY")

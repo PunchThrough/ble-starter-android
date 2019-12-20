@@ -559,7 +559,7 @@ object ConnectionManager {
             }
         }
 
-        private fun Int.toBondStateDescription() = when(this) {
+        private fun Int.toBondStateDescription() = when (this) {
             BluetoothDevice.BOND_BONDED -> "BONDED"
             BluetoothDevice.BOND_BONDING -> "BONDING"
             BluetoothDevice.BOND_NONE -> "NOT BONDED"
