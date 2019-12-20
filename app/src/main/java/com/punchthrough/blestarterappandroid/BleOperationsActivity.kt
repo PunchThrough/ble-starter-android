@@ -19,21 +19,45 @@ package com.punchthrough.blestarterappandroid
 import android.bluetooth.BluetoothDevice
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
+import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
+import org.jetbrains.anko.alert
 
 class BleOperationsActivity : AppCompatActivity() {
 
     private lateinit var device: BluetoothDevice
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        ConnectionManager.registerListener(connectionEventListener)
         super.onCreate(savedInstanceState)
         device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
             ?: error("Missing BluetoothDevice from MainActivity!")
         setContentView(R.layout.activity_ble_operations)
+        supportActionBar?.apply {
+            setDisplayShowTitleEnabled(true)
+            title = getString(R.string.ble_playground)
+        }
+
+        ConnectionManager.listenToBondStateChanges(this)
     }
 
     override fun onDestroy() {
-        ConnectionManager.teardownConnection()
+        ConnectionManager.unregisterListener(connectionEventListener)
+        ConnectionManager.teardownConnection(device)
         super.onDestroy()
+    }
+
+    private val connectionEventListener by lazy {
+        ConnectionEventListener().apply {
+            onDisconnect = {
+                runOnUiThread {
+                    alert {
+                        title = "Disconnected"
+                        message = "Disconnected from device."
+                        positiveButton("OK") { onBackPressed() }
+                    }.show()
+                }
+            }
+        }
     }
 }
