@@ -55,6 +55,6 @@ Some simpler violations can be automatically formatted by `ktlint` using the fol
 ./gradlew ktlintFormat
 ```
 
-### Licensing
+## Licensing
 
 This project is licensed under the Apache 2.0. For more details, please see [LICENSE](https://github.com/PunchThrough/ble-starter-android/blob/master/LICENSE).
