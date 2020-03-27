@@ -2,7 +2,6 @@
   <code_scheme name="Project" version="173">
     <option name="SOFT_MARGINS" value="120" />
     <AndroidXmlCodeStyleSettings>
-      <option name="ARRANGEMENT_SETTINGS_MIGRATED_TO_191" value="true" />
       <option name="LAYOUT_SETTINGS">
         <value>
           <option name="INSERT_LINE_BREAK_BEFORE_NAMESPACE_DECLARATION" value="true" />
