@@ -1,5 +1,9 @@
 # Punch Through Android BLE Starter App
 
+**Note:** This project is currently up-to-date as of `compileSdkVersion` and `targetSdkVersion` of 30 (Android 11). We're working on support for Android 12+ as part of [#14](https://github.com/PunchThrough/ble-starter-android/issues/14).
+
+---
+
 [![CircleCI build status](https://circleci.com/gh/PunchThrough/ble-starter-android/tree/master.svg?style=svg)](https://circleci.com/gh/PunchThrough/ble-starter-android/tree/master)
 
 Companion Android app project for [Punch Through](https://punchthrough.com)'s "Ultimate Guide to Android BLE Development" blog post for beginners, with examples of how to perform basic BLE operations and some Android BLE tips and tricks on the following:
