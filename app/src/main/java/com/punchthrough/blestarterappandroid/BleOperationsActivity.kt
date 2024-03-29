@@ -217,8 +217,8 @@ class BleOperationsActivity : AppCompatActivity() {
                 }
             }
 
-            onCharacteristicRead = { _, characteristic ->
-                log("Read from ${characteristic.uuid}: ${characteristic.value.toHexString()}")
+            onCharacteristicRead = { _, characteristic, value ->
+                log("Read from ${characteristic.uuid}: ${value.toHexString()}")
             }
 
             onCharacteristicWrite = { _, characteristic ->
@@ -229,8 +229,8 @@ class BleOperationsActivity : AppCompatActivity() {
                 log("MTU updated to $mtu")
             }
 
-            onCharacteristicChanged = { _, characteristic ->
-                log("Value changed on ${characteristic.uuid}: ${characteristic.value.toHexString()}")
+            onCharacteristicChanged = { _, characteristic, value ->
+                log("Value changed on ${characteristic.uuid}: ${value.toHexString()}")
             }
 
             onNotificationsEnabled = { _, characteristic ->
@@ -278,7 +278,7 @@ class BleOperationsActivity : AppCompatActivity() {
     }
 
     private fun String.hexToBytes() =
-        this.chunked(2).map { it.toUpperCase(Locale.US).toInt(16).toByte() }.toByteArray()
+        this.chunked(2).map { it.uppercase(Locale.US).toInt(16).toByte() }.toByteArray()
 
     /**
      * A backwards compatible approach of obtaining a parcelable extra from an [Intent] object.
