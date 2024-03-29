@@ -18,10 +18,14 @@ package com.punchthrough.blestarterappandroid
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.AlertDialog
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.os.Parcelable
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -38,15 +42,7 @@ import com.punchthrough.blestarterappandroid.ble.isReadable
 import com.punchthrough.blestarterappandroid.ble.isWritable
 import com.punchthrough.blestarterappandroid.ble.isWritableWithoutResponse
 import com.punchthrough.blestarterappandroid.ble.toHexString
-import kotlinx.android.synthetic.main.activity_ble_operations.characteristics_recycler_view
-import kotlinx.android.synthetic.main.activity_ble_operations.log_scroll_view
-import kotlinx.android.synthetic.main.activity_ble_operations.log_text_view
-import kotlinx.android.synthetic.main.activity_ble_operations.mtu_field
-import kotlinx.android.synthetic.main.activity_ble_operations.request_mtu_button
-import org.jetbrains.anko.alert
-import org.jetbrains.anko.noButton
-import org.jetbrains.anko.selector
-import org.jetbrains.anko.yesButton
+import com.punchthrough.blestarterappandroid.databinding.ActivityBleOperationsBinding
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -54,7 +50,11 @@ import java.util.UUID
 
 class BleOperationsActivity : AppCompatActivity() {
 
-    private lateinit var device: BluetoothDevice
+    private lateinit var binding: ActivityBleOperationsBinding
+    private val device: BluetoothDevice by lazy {
+        intent.parcelableExtraCompat(BluetoothDevice.EXTRA_DEVICE)
+            ?: error("Missing BluetoothDevice from MainActivity!")
+    }
     private val dateFormatter = SimpleDateFormat("MMM d, HH:mm:ss", Locale.US)
     private val characteristics by lazy {
         ConnectionManager.servicesOnDevice(device)?.flatMap { service ->
@@ -62,8 +62,8 @@ class BleOperationsActivity : AppCompatActivity() {
         } ?: listOf()
     }
     private val characteristicProperties by lazy {
-        characteristics.map { characteristic ->
-            characteristic to mutableListOf<CharacteristicProperty>().apply {
+        characteristics.associateWith { characteristic ->
+            mutableListOf<CharacteristicProperty>().apply {
                 if (characteristic.isNotifiable()) add(CharacteristicProperty.Notifiable)
                 if (characteristic.isIndicatable()) add(CharacteristicProperty.Indicatable)
                 if (characteristic.isReadable()) add(CharacteristicProperty.Readable)
@@ -72,20 +72,20 @@ class BleOperationsActivity : AppCompatActivity() {
                     add(CharacteristicProperty.WritableWithoutResponse)
                 }
             }.toList()
-        }.toMap()
+        }
     }
     private val characteristicAdapter: CharacteristicAdapter by lazy {
         CharacteristicAdapter(characteristics) { characteristic ->
             showCharacteristicOptions(characteristic)
         }
     }
-    private var notifyingCharacteristics = mutableListOf<UUID>()
+    private val notifyingCharacteristics = mutableListOf<UUID>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        ConnectionManager.registerListener(connectionEventListener)
         super.onCreate(savedInstanceState)
-        device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-            ?: error("Missing BluetoothDevice from MainActivity!")
+        ConnectionManager.registerListener(connectionEventListener)
+
+        binding = ActivityBleOperationsBinding.inflate(layoutInflater)
 
         setContentView(R.layout.activity_ble_operations)
         supportActionBar?.apply {
@@ -94,12 +94,13 @@ class BleOperationsActivity : AppCompatActivity() {
             title = getString(R.string.ble_playground)
         }
         setupRecyclerView()
-        request_mtu_button.setOnClickListener {
-            if (mtu_field.text.isNotEmpty() && mtu_field.text.isNotBlank()) {
-                mtu_field.text.toString().toIntOrNull()?.let { mtu ->
+        binding.requestMtuButton.setOnClickListener {
+            val userInput = binding.mtuField.text
+            if (userInput.isNotEmpty() && userInput.isNotBlank()) {
+                userInput.toString().toIntOrNull()?.let { mtu ->
                     log("Requesting for MTU value of $mtu")
                     ConnectionManager.requestMtu(device, mtu)
-                } ?: log("Invalid MTU value: ${mtu_field.text}")
+                } ?: log("Invalid MTU value: $userInput")
             } else {
                 log("Please specify a numeric value for desired ATT MTU (23-517)")
             }
@@ -124,7 +125,7 @@ class BleOperationsActivity : AppCompatActivity() {
     }
 
     private fun setupRecyclerView() {
-        characteristics_recycler_view.apply {
+        binding.characteristicsRecyclerView.apply {
             adapter = characteristicAdapter
             layoutManager = LinearLayoutManager(
                 this@BleOperationsActivity,
@@ -132,60 +133,63 @@ class BleOperationsActivity : AppCompatActivity() {
                 false
             )
             isNestedScrollingEnabled = false
-        }
 
-        val animator = characteristics_recycler_view.itemAnimator
-        if (animator is SimpleItemAnimator) {
-            animator.supportsChangeAnimations = false
+            itemAnimator.let {
+                if (it is SimpleItemAnimator) {
+                    it.supportsChangeAnimations = false
+                }
+            }
         }
     }
 
     @SuppressLint("SetTextI18n")
     private fun log(message: String) {
-        val formattedMessage = String.format("%s: %s", dateFormatter.format(Date()), message)
+        val formattedMessage = "${dateFormatter.format(Date())}: $message"
         runOnUiThread {
-            val currentLogText = if (log_text_view.text.isEmpty()) {
-                "Beginning of log."
-            } else {
-                log_text_view.text
-            }
-            log_text_view.text = "$currentLogText\n$formattedMessage"
-            log_scroll_view.post { log_scroll_view.fullScroll(View.FOCUS_DOWN) }
+            val uiText = binding.logTextView.text
+            val currentLogText = uiText.ifEmpty { "Beginning of log." }
+            binding.logTextView.text = "$currentLogText\n$formattedMessage"
+            binding.logScrollView.post { binding.logScrollView.fullScroll(View.FOCUS_DOWN) }
         }
     }
 
-    private fun showCharacteristicOptions(characteristic: BluetoothGattCharacteristic) {
+    private fun showCharacteristicOptions(
+        characteristic: BluetoothGattCharacteristic
+    ) = runOnUiThread {
         characteristicProperties[characteristic]?.let { properties ->
-            selector("Select an action to perform", properties.map { it.action }) { _, i ->
-                when (properties[i]) {
-                    CharacteristicProperty.Readable -> {
-                        log("Reading from ${characteristic.uuid}")
-                        ConnectionManager.readCharacteristic(device, characteristic)
-                    }
-                    CharacteristicProperty.Writable, CharacteristicProperty.WritableWithoutResponse -> {
-                        showWritePayloadDialog(characteristic)
-                    }
-                    CharacteristicProperty.Notifiable, CharacteristicProperty.Indicatable -> {
-                        if (notifyingCharacteristics.contains(characteristic.uuid)) {
-                            log("Disabling notifications on ${characteristic.uuid}")
-                            ConnectionManager.disableNotifications(device, characteristic)
-                        } else {
-                            log("Enabling notifications on ${characteristic.uuid}")
-                            ConnectionManager.enableNotifications(device, characteristic)
+            AlertDialog.Builder(this)
+                .setTitle("Select an action to perform")
+                .setItems(properties.map { it.action }.toTypedArray()) { _, i ->
+                    when (properties[i]) {
+                        CharacteristicProperty.Readable -> {
+                            log("Reading from ${characteristic.uuid}")
+                            ConnectionManager.readCharacteristic(device, characteristic)
+                        }
+                        CharacteristicProperty.Writable, CharacteristicProperty.WritableWithoutResponse -> {
+                            showWritePayloadDialog(characteristic)
+                        }
+                        CharacteristicProperty.Notifiable, CharacteristicProperty.Indicatable -> {
+                            if (notifyingCharacteristics.contains(characteristic.uuid)) {
+                                log("Disabling notifications on ${characteristic.uuid}")
+                                ConnectionManager.disableNotifications(device, characteristic)
+                            } else {
+                                log("Enabling notifications on ${characteristic.uuid}")
+                                ConnectionManager.enableNotifications(device, characteristic)
+                            }
                         }
                     }
                 }
-            }
+                .show()
         }
     }
 
     @SuppressLint("InflateParams")
     private fun showWritePayloadDialog(characteristic: BluetoothGattCharacteristic) {
         val hexField = layoutInflater.inflate(R.layout.edittext_hex_payload, null) as EditText
-        alert {
-            customView = hexField
-            isCancelable = false
-            yesButton {
+        AlertDialog.Builder(this)
+            .setView(hexField)
+            .setCancelable(false)
+            .setPositiveButton("Write") { _, _ ->
                 with(hexField.text.toString()) {
                     if (isNotBlank() && isNotEmpty()) {
                         val bytes = hexToBytes()
@@ -196,20 +200,20 @@ class BleOperationsActivity : AppCompatActivity() {
                     }
                 }
             }
-            noButton {}
-        }.show()
+            .show()
         hexField.showKeyboard()
+        // TODO: Do we need to hide the keyboard with setNegativeButton or onCancel?
     }
 
     private val connectionEventListener by lazy {
         ConnectionEventListener().apply {
             onDisconnect = {
                 runOnUiThread {
-                    alert {
-                        title = "Disconnected"
-                        message = "Disconnected from device."
-                        positiveButton("OK") { onBackPressed() }
-                    }.show()
+                    AlertDialog.Builder(this@BleOperationsActivity)
+                        .setTitle("Disconnected")
+                        .setMessage("Disconnected from device.")
+                        .setPositiveButton("OK") { _, _ -> onBackPressed() }
+                        .show()
                 }
             }
 
@@ -275,4 +279,17 @@ class BleOperationsActivity : AppCompatActivity() {
 
     private fun String.hexToBytes() =
         this.chunked(2).map { it.toUpperCase(Locale.US).toInt(16).toByte() }.toByteArray()
+
+    /**
+     * A backwards compatible approach of obtaining a parcelable extra from an [Intent] object.
+     *
+     * NOTE: Despite the docs stating that [Intent.getParcelableExtra] is deprecated in Android 13,
+     * Google has confirmed in https://issuetracker.google.com/issues/240585930#comment6 that the
+     * replacement API is buggy for Android 13, and they suggested that developers continue to use the
+     * deprecated API for Android 13. The issue will be fixed for Android 14 (U).
+     */
+    private inline fun <reified T : Parcelable> Intent.parcelableExtraCompat(key: String): T? = when {
+        Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU -> getParcelableExtra(key, T::class.java)
+        else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
+    }
 }
