@@ -20,18 +20,18 @@ import android.bluetooth.BluetoothDevice
 import android.content.Context
 import java.util.UUID
 
-/** Abstract sealed class representing a type of BLE operation */
+/** Abstract sealed class representing a type of BLE operation. */
 sealed class BleOperationType {
     abstract val device: BluetoothDevice
 }
 
-/** Connect to [device] and perform service discovery */
+/** Connect to [device] and perform service discovery. */
 data class Connect(override val device: BluetoothDevice, val context: Context) : BleOperationType()
 
-/** Disconnect from [device] and release all connection resources */
+/** Disconnect from [device] and release all connection resources. */
 data class Disconnect(override val device: BluetoothDevice) : BleOperationType()
 
-/** Write [payload] as the value of a characteristic represented by [characteristicUuid] */
+/** Write [payload] as the value of a characteristic represented by [characteristicUuid]. */
 data class CharacteristicWrite(
     override val device: BluetoothDevice,
     val characteristicUuid: UUID,
@@ -61,13 +61,13 @@ data class CharacteristicWrite(
     }
 }
 
-/** Read the value of a characteristic represented by [characteristicUuid] */
+/** Read the value of a characteristic represented by [characteristicUuid]. */
 data class CharacteristicRead(
     override val device: BluetoothDevice,
     val characteristicUuid: UUID
 ) : BleOperationType()
 
-/** Write [payload] as the value of a descriptor represented by [descriptorUuid] */
+/** Write [payload] as the value of a descriptor represented by [descriptorUuid]. */
 data class DescriptorWrite(
     override val device: BluetoothDevice,
     val descriptorUuid: UUID,
@@ -94,25 +94,25 @@ data class DescriptorWrite(
     }
 }
 
-/** Read the value of a descriptor represented by [descriptorUuid] */
+/** Read the value of a descriptor represented by [descriptorUuid]. */
 data class DescriptorRead(
     override val device: BluetoothDevice,
     val descriptorUuid: UUID
 ) : BleOperationType()
 
-/** Enable notifications/indications on a characteristic represented by [characteristicUuid] */
+/** Enable notifications/indications on a characteristic represented by [characteristicUuid]. */
 data class EnableNotifications(
     override val device: BluetoothDevice,
     val characteristicUuid: UUID
 ) : BleOperationType()
 
-/** Disable notifications/indications on a characteristic represented by [characteristicUuid] */
+/** Disable notifications/indications on a characteristic represented by [characteristicUuid]. */
 data class DisableNotifications(
     override val device: BluetoothDevice,
     val characteristicUuid: UUID
 ) : BleOperationType()
 
-/** Request for an MTU of [mtu] */
+/** Request for an MTU of [mtu]. */
 data class MtuRequest(
     override val device: BluetoothDevice,
     val mtu: Int

@@ -128,7 +128,7 @@ fun BluetoothGattDescriptor.containsPermission(permission: Int): Boolean =
  * is a Client Characteristic Configuration Descriptor.
  */
 fun BluetoothGattDescriptor.isCccd() =
-    uuid.toString().toUpperCase(Locale.US) == CCC_DESCRIPTOR_UUID.toUpperCase(Locale.US)
+    uuid.toString().uppercase(Locale.US) == CCC_DESCRIPTOR_UUID.uppercase(Locale.US)
 
 // ByteArray
 
