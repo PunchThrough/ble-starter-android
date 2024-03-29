@@ -1,5 +1,5 @@
 <!--
-  ~ Copyright 2019 Punch Through Design LLC
+  ~ Copyright 2024 Punch Through Design LLC
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
   ~ you may not use this file except in compliance with the License.
@@ -17,4 +17,16 @@
 <resources>
     <string name="app_name">BLE Starter</string>
     <string name="ble_playground">BLE Playground</string>
+    <string name="location_permission_required">Location Permission Required</string>
+    <string name="location_permission_rationale">Starting from Android 6, the system requires apps to be granted location access in order to scan for BLE devices.\n\nYour location is never used aside from enabling the app to perform BLE scans.</string>
+    <string name="bluetooth_permission_required">Nearby Devices Permission Required</string>
+    <string name="bluetooth_permission_rationale">Starting from Android 12, the system requires apps to be granted Nearby Devices access in order to scan for and connect to BLE devices.</string>
+    <string name="please_grant_relevant_permissions">Please grant required permissions</string>
+    <string name="app_settings_rationale">Prior requests for required permissions have been repeatedly or permanently denied. You\'ll need to manually grant the app these permissions from the app\'s Settings screen.</string>
+    <string name="cannot_launch_app_settings">Unable to launch app settings, please navigate to app settings manually</string>
+    <string name="app_settings">App Settings</string>
+    <string name="quit">Quit</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="disconnected_or_unable_to_connect_to_device">Disconnected or unable to connect to device.</string>
+    <string name="ok">OK</string>
 </resources>
