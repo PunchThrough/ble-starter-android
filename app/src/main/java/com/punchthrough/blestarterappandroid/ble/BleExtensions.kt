@@ -16,9 +16,12 @@
 
 package com.punchthrough.blestarterappandroid.ble
 
+import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
+import android.os.Build
 import timber.log.Timber
 import java.util.Locale
 import java.util.UUID
@@ -106,6 +109,33 @@ fun BluetoothGattCharacteristic.isNotifiable(): Boolean =
 fun BluetoothGattCharacteristic.containsProperty(property: Int): Boolean =
     properties and property != 0
 
+@SuppressLint("MissingPermission")
+fun BluetoothGattCharacteristic.executeWrite(
+    gatt: BluetoothGatt,
+    payload: ByteArray,
+    writeType: Int
+) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        gatt.writeCharacteristic(this, payload, writeType)
+    } else {
+        // Fall back to deprecated version of writeCharacteristic for Android <13
+        legacyCharacteristicWrite(gatt, payload, writeType)
+    }
+}
+
+@TargetApi(Build.VERSION_CODES.S)
+@SuppressLint("MissingPermission")
+@Suppress("DEPRECATION")
+private fun BluetoothGattCharacteristic.legacyCharacteristicWrite(
+    gatt: BluetoothGatt,
+    payload: ByteArray,
+    writeType: Int
+) {
+    this.writeType = writeType
+    value = payload
+    gatt.writeCharacteristic(this)
+}
+
 // BluetoothGattDescriptor
 
 fun BluetoothGattDescriptor.printProperties(): String = mutableListOf<String>().apply {
@@ -122,6 +152,30 @@ fun BluetoothGattDescriptor.isWritable(): Boolean =
 
 fun BluetoothGattDescriptor.containsPermission(permission: Int): Boolean =
     permissions and permission != 0
+
+@SuppressLint("MissingPermission")
+fun BluetoothGattDescriptor.executeWrite(
+    gatt: BluetoothGatt,
+    payload: ByteArray
+) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        gatt.writeDescriptor(this, payload)
+    } else {
+        // Fall back to deprecated version of writeDescriptor for Android <13
+        legacyDescriptorWrite(gatt, payload)
+    }
+}
+
+@TargetApi(Build.VERSION_CODES.S)
+@SuppressLint("MissingPermission")
+@Suppress("DEPRECATION")
+private fun BluetoothGattDescriptor.legacyDescriptorWrite(
+    gatt: BluetoothGatt,
+    payload: ByteArray
+) {
+    value = payload
+    gatt.writeDescriptor(this)
+}
 
 /**
  * Convenience extension function that returns true if this [BluetoothGattDescriptor]
