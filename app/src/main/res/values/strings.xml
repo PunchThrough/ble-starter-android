@@ -27,6 +27,6 @@
     <string name="app_settings">App Settings</string>
     <string name="quit">Quit</string>
     <string name="disconnected">Disconnected</string>
-    <string name="disconnected_or_unable_to_connect_to_device">Disconnected or unable to connect to device.</string>
+    <string name="disconnected_or_unable_to_connect_to_device">Disconnected or unable to connect to %1$s.</string>
     <string name="ok">OK</string>
 </resources>

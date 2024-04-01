@@ -301,11 +301,19 @@ class MainActivity : AppCompatActivity() {
                     startActivity(it)
                 }
             }
+            @SuppressLint("MissingPermission")
             onDisconnect = {
+                val deviceName = if (hasRequiredBluetoothPermissions()) {
+                    it.name
+                } else {
+                    "device"
+                }
                 runOnUiThread {
                     AlertDialog.Builder(this@MainActivity)
                         .setTitle(R.string.disconnected)
-                        .setMessage(R.string.disconnected_or_unable_to_connect_to_device)
+                        .setMessage(
+                            getString(R.string.disconnected_or_unable_to_connect_to_device, deviceName)
+                        )
                         .setPositiveButton(R.string.ok, null)
                         .show()
                 }
