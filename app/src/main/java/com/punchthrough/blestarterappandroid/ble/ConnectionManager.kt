@@ -250,11 +250,11 @@ object ConnectionManager {
                 signalEndOfOperation()
             }
             is CharacteristicWrite -> with(operation) {
-                gatt.findCharacteristic(characteristicUuid)?.let { characteristic ->
-                    characteristic.writeType = writeType
-                    characteristic.value = payload
-                    gatt.writeCharacteristic(characteristic)
-                } ?: this@ConnectionManager.run {
+                gatt.findCharacteristic(characteristicUuid)?.executeWrite(
+                    gatt,
+                    payload,
+                    writeType
+                ) ?: this@ConnectionManager.run {
                     Timber.e("Cannot find $characteristicUuid to write to")
                     signalEndOfOperation()
                 }
@@ -268,10 +268,10 @@ object ConnectionManager {
                 }
             }
             is DescriptorWrite -> with(operation) {
-                gatt.findDescriptor(descriptorUuid)?.let { descriptor ->
-                    descriptor.value = payload
-                    gatt.writeDescriptor(descriptor)
-                } ?: this@ConnectionManager.run {
+                gatt.findDescriptor(descriptorUuid)?.executeWrite(
+                    gatt,
+                    payload
+                ) ?: this@ConnectionManager.run {
                     Timber.e("Cannot find $descriptorUuid to write to")
                     signalEndOfOperation()
                 }
@@ -302,9 +302,7 @@ object ConnectionManager {
                             signalEndOfOperation()
                             return
                         }
-
-                        cccDescriptor.value = payload
-                        gatt.writeDescriptor(cccDescriptor)
+                        cccDescriptor.executeWrite(gatt, payload)
                     } ?: this@ConnectionManager.run {
                         Timber.e("${characteristic.uuid} doesn't contain the CCC descriptor!")
                         signalEndOfOperation()
@@ -323,9 +321,10 @@ object ConnectionManager {
                             signalEndOfOperation()
                             return
                         }
-
-                        cccDescriptor.value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
-                        gatt.writeDescriptor(cccDescriptor)
+                        cccDescriptor.executeWrite(
+                            gatt,
+                            BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+                        )
                     } ?: this@ConnectionManager.run {
                         Timber.e("${characteristic.uuid} doesn't contain the CCC descriptor!")
                         signalEndOfOperation()
