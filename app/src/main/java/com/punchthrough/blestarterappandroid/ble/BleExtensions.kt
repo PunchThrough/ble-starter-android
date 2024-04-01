@@ -56,15 +56,27 @@ fun BluetoothGatt.printGattTable() {
     }
 }
 
-fun BluetoothGatt.findCharacteristic(uuid: UUID): BluetoothGattCharacteristic? {
-    services?.forEach { service ->
-        service.characteristics?.firstOrNull { characteristic ->
-            characteristic.uuid == uuid
-        }?.let { matchingCharacteristic ->
-            return matchingCharacteristic
+fun BluetoothGatt.findCharacteristic(
+    characteristicUuid: UUID,
+    serviceUuid: UUID? = null
+): BluetoothGattCharacteristic? {
+    return if (serviceUuid != null) {
+        // If serviceUuid is available, use it to disambiguate cases where multiple services have
+        // distinct characteristics that happen to use the same UUID
+        services
+            ?.firstOrNull { it.uuid == serviceUuid }
+            ?.characteristics?.firstOrNull { it.uuid == characteristicUuid }
+    } else {
+        // Iterate through services and find the first one with a match for the characteristic UUID
+        services?.forEach { service ->
+            service.characteristics?.firstOrNull { characteristic ->
+                characteristic.uuid == characteristicUuid
+            }?.let { matchingCharacteristic ->
+                return matchingCharacteristic
+            }
         }
+        return null
     }
-    return null
 }
 
 fun BluetoothGatt.findDescriptor(uuid: UUID): BluetoothGattDescriptor? {
