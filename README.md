@@ -1,6 +1,7 @@
 # Punch Through Android BLE Starter App
 
-**Note:** This project is currently up-to-date as of `compileSdkVersion` and `targetSdkVersion` of 30 (Android 11). We're working on support for Android 12+ as part of [#14](https://github.com/PunchThrough/ble-starter-android/issues/14).
+> [!NOTE]
+> This project is currently up-to-date as of `compileSdkVersion` and `targetSdkVersion` of 34 (Android 14).
 
 ---
 
@@ -31,7 +32,7 @@ git clone https://github.com/PunchThrough/ble-starter-android.git
 
 ## Requirements
 
-This project targets Android 10 and has a min SDK requirement of 21 (Android 5.0), in line with our recommendation in [4 Tips to Make Android BLE Actually Work](https://punchthrough.com/android-ble-development-tips/).
+This project targets Android 14 and has a min SDK requirement of 21 (Android 5.0), in line with our recommendation in [4 Tips to Make Android BLE Actually Work](https://punchthrough.com/android-ble-development-tips/).
 
 ## Contributing
 
