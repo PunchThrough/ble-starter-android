@@ -392,6 +392,8 @@ object ConnectionManager {
             }
         }
 
+        @Deprecated("Deprecated for Android 13+")
+        @Suppress("DEPRECATION")
         override fun onCharacteristicRead(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
@@ -401,7 +403,13 @@ object ConnectionManager {
                 when (status) {
                     BluetoothGatt.GATT_SUCCESS -> {
                         Timber.i("Read characteristic $uuid | value: ${value.toHexString()}")
-                        listeners.forEach { it.get()?.onCharacteristicRead?.invoke(gatt.device, this) }
+                        listenersAsSet.forEach {
+                            it.get()?.onCharacteristicRead?.invoke(
+                                gatt.device,
+                                this,
+                                value
+                            )
+                        }
                     }
                     BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
                         Timber.e("Read not permitted for $uuid!")
@@ -417,16 +425,44 @@ object ConnectionManager {
             }
         }
 
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray,
+            status: Int
+        ) {
+            val uuid = characteristic.uuid
+            when (status) {
+                BluetoothGatt.GATT_SUCCESS -> {
+                    Timber.i("Read characteristic $uuid | value: ${value.toHexString()}")
+                    listenersAsSet.forEach {
+                        it.get()?.onCharacteristicRead?.invoke(gatt.device, characteristic, value)
+                    }
+                }
+                BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
+                    Timber.e("Read not permitted for $uuid!")
+                }
+                else -> {
+                    Timber.e("Characteristic read failed for $uuid, error: $status")
+                }
+            }
+
+            if (pendingOperation is CharacteristicRead) {
+                signalEndOfOperation()
+            }
+        }
+
         override fun onCharacteristicWrite(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
             status: Int
         ) {
+            val writtenValue = (pendingOperation as? CharacteristicWrite)?.payload
             with(characteristic) {
                 when (status) {
                     BluetoothGatt.GATT_SUCCESS -> {
-                        Timber.i("Wrote to characteristic $uuid | value: ${value.toHexString()}")
-                        listeners.forEach { it.get()?.onCharacteristicWrite?.invoke(gatt.device, this) }
+                        Timber.i("Wrote to characteristic $uuid | value: ${writtenValue?.toHexString()}")
+                        listenersAsSet.forEach { it.get()?.onCharacteristicWrite?.invoke(gatt.device, this) }
                     }
                     BluetoothGatt.GATT_WRITE_NOT_PERMITTED -> {
                         Timber.e("Write not permitted for $uuid!")
@@ -442,16 +478,33 @@ object ConnectionManager {
             }
         }
 
+        @Deprecated("Deprecated for Android 13+")
+        @Suppress("DEPRECATION")
         override fun onCharacteristicChanged(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic
         ) {
             with(characteristic) {
                 Timber.i("Characteristic $uuid changed | value: ${value.toHexString()}")
-                listeners.forEach { it.get()?.onCharacteristicChanged?.invoke(gatt.device, this) }
+                listenersAsSet.forEach {
+                    it.get()?.onCharacteristicChanged?.invoke(gatt.device, this, value)
+                }
             }
         }
 
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray
+        ) {
+            Timber.i("Characteristic ${characteristic.uuid} changed | value: ${value.toHexString()}")
+            listenersAsSet.forEach {
+                it.get()?.onCharacteristicChanged?.invoke(gatt.device, characteristic, value)
+            }
+        }
+
+        @Deprecated("Deprecated for Android 13+")
+        @Suppress("DEPRECATION")
         override fun onDescriptorRead(
             gatt: BluetoothGatt,
             descriptor: BluetoothGattDescriptor,
@@ -471,6 +524,33 @@ object ConnectionManager {
                     else -> {
                         Timber.e("Descriptor read failed for $uuid, error: $status")
                     }
+                }
+            }
+
+            if (pendingOperation is DescriptorRead) {
+                signalEndOfOperation()
+            }
+        }
+
+        override fun onDescriptorRead(
+            gatt: BluetoothGatt,
+            descriptor: BluetoothGattDescriptor,
+            status: Int,
+            value: ByteArray
+        ) {
+            val uuid = descriptor.uuid
+            when (status) {
+                BluetoothGatt.GATT_SUCCESS -> {
+                    Timber.i("Read descriptor $uuid | value: ${value.toHexString()}")
+                    listenersAsSet.forEach {
+                        it.get()?.onDescriptorRead?.invoke(gatt.device, descriptor, value)
+                    }
+                }
+                BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
+                    Timber.e("Read not permitted for $uuid!")
+                }
+                else -> {
+                    Timber.e("Descriptor read failed for $uuid, error: $status")
                 }
             }
 
