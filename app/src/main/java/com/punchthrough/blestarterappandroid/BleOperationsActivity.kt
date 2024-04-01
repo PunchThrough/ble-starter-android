@@ -25,6 +25,7 @@ import android.content.Context
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
@@ -186,7 +187,6 @@ class BleOperationsActivity : AppCompatActivity() {
         val hexField = layoutInflater.inflate(R.layout.edittext_hex_payload, null) as EditText
         AlertDialog.Builder(this)
             .setView(hexField)
-            .setCancelable(false)
             .setPositiveButton("Write") { _, _ ->
                 with(hexField.text.toString()) {
                     if (isNotBlank() && isNotEmpty()) {
@@ -198,9 +198,15 @@ class BleOperationsActivity : AppCompatActivity() {
                     }
                 }
             }
-            .show()
-        hexField.showKeyboard()
-        // TODO: Do we need to hide the keyboard with setNegativeButton or onCancel?
+            .setNegativeButton("Cancel", null)
+            .create()
+            .apply {
+                window?.setSoftInputMode(
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE
+                )
+                hexField.showKeyboard()
+                show()
+            }
     }
 
     private val connectionEventListener by lazy {
