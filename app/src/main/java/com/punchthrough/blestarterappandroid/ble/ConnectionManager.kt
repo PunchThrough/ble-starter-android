@@ -564,15 +564,20 @@ object ConnectionManager {
             descriptor: BluetoothGattDescriptor,
             status: Int
         ) {
+            val operationType = pendingOperation
             with(descriptor) {
                 when (status) {
                     BluetoothGatt.GATT_SUCCESS -> {
-                        Timber.i("Wrote to descriptor $uuid | value: ${value.toHexString()}")
+                        Timber.i("Wrote to descriptor $uuid | operation type: $operationType")
 
-                        if (isCccd()) {
-                            onCccdWrite(gatt, value, characteristic)
+                        if (isCccd() &&
+                            (operationType is EnableNotifications || operationType is DisableNotifications)
+                        ) {
+                            onCccdWrite(gatt, characteristic, operationType)
                         } else {
-                            listeners.forEach { it.get()?.onDescriptorWrite?.invoke(gatt.device, this) }
+                            listenersAsSet.forEach {
+                                it.get()?.onDescriptorWrite?.invoke(gatt.device, this)
+                            }
                         }
                     }
                     BluetoothGatt.GATT_WRITE_NOT_PERMITTED -> {
@@ -584,29 +589,23 @@ object ConnectionManager {
                 }
             }
 
-            if (descriptor.isCccd() &&
-                (pendingOperation is EnableNotifications || pendingOperation is DisableNotifications)
-            ) {
-                signalEndOfOperation()
-            } else if (!descriptor.isCccd() && pendingOperation is DescriptorWrite) {
+            val isNotificationsOperation = descriptor.isCccd() &&
+                (operationType is EnableNotifications || operationType is DisableNotifications)
+            val isManualWriteOperation = !descriptor.isCccd() && operationType is DescriptorWrite
+            if (isNotificationsOperation || isManualWriteOperation) {
                 signalEndOfOperation()
             }
         }
 
         private fun onCccdWrite(
             gatt: BluetoothGatt,
-            value: ByteArray,
-            characteristic: BluetoothGattCharacteristic
+            characteristic: BluetoothGattCharacteristic,
+            operationType: BleOperationType
         ) {
             val charUuid = characteristic.uuid
-            val notificationsEnabled =
-                value.contentEquals(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) ||
-                    value.contentEquals(BluetoothGattDescriptor.ENABLE_INDICATION_VALUE)
-            val notificationsDisabled =
-                value.contentEquals(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
 
-            when {
-                notificationsEnabled -> {
+            when (operationType) {
+                is EnableNotifications -> {
                     Timber.w("Notifications or indications ENABLED on $charUuid")
                     listenersAsSet.forEach {
                         it.get()?.onNotificationsEnabled?.invoke(
@@ -615,7 +614,7 @@ object ConnectionManager {
                         )
                     }
                 }
-                notificationsDisabled -> {
+                is DisableNotifications -> {
                     Timber.w("Notifications or indications DISABLED on $charUuid")
                     listenersAsSet.forEach {
                         it.get()?.onNotificationsDisabled?.invoke(
@@ -625,7 +624,7 @@ object ConnectionManager {
                     }
                 }
                 else -> {
-                    Timber.e("Unexpected value ${value.toHexString()} on CCCD of $charUuid")
+                    Timber.e("Unexpected operation type of $operationType on CCCD of $charUuid")
                 }
             }
         }
