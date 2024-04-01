@@ -85,7 +85,7 @@ class BleOperationsActivity : AppCompatActivity() {
 
         binding = ActivityBleOperationsBinding.inflate(layoutInflater)
 
-        setContentView(R.layout.activity_ble_operations)
+        setContentView(binding.root)
         supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
             setDisplayShowTitleEnabled(true)
