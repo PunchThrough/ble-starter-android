@@ -113,7 +113,9 @@ private fun Activity.bluetoothPermissionRationaleRequired(): Boolean {
         ) || ActivityCompat.shouldShowRequestPermissionRationale(
             this, Manifest.permission.BLUETOOTH_CONNECT
         )
-    } else false
+    } else {
+        false
+    }
 }
 
 @RequiresApi(Build.VERSION_CODES.S)

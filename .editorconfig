@@ -1,2 +1,17 @@
 [*.{kt,kts}]
-disabled_rules=import-ordering
+ktlint_code_style = android_studio
+ktlint_standard_max-line-length = disabled 
+ktlint_standard_discouraged-comment-location = disabled 
+ktlint_standard_function-signature = disabled 
+ktlint_standard_argument-list-wrapping = disabled 
+ktlint_standard_parameter-list-wrapping = disabled 
+ktlint_standard_wrapping = disabled 
+ktlint_standard_property-wrapping = disabled 
+ktlint_standard_trailing-comma-on-call-site = disabled 
+ktlint_standard_trailing-comma-on-declaration-site = disabled 
+ktlint_standard_statement-wrapping = disabled 
+ktlint_standard_annotation = disabled 
+ktlint_standard_indent = disabled 
+ktlint_standard_enum-wrapping = disabled 
+ktlint_standard_import-ordering = disabled 
+

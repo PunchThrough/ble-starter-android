@@ -38,9 +38,9 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
-private const val GATT_MIN_MTU_SIZE = 23
 /** Maximum BLE MTU size as defined in gatt_api.h. */
 private const val GATT_MAX_MTU_SIZE = 517
+private const val GATT_MIN_MTU_SIZE = 23
 
 @SuppressLint("MissingPermission") // Assume permissions are handled by UI
 object ConnectionManager {
