@@ -568,4 +568,17 @@ object ConnectionManager {
     }
 
     private fun BluetoothDevice.isConnected() = deviceGattMap.containsKey(this)
+
+    /**
+     * A backwards compatible approach of obtaining a parcelable extra from an [Intent] object.
+     *
+     * NOTE: Despite the docs stating that [Intent.getParcelableExtra] is deprecated in Android 13,
+     * Google has confirmed in https://issuetracker.google.com/issues/240585930#comment6 that the
+     * replacement API is buggy for Android 13, and they suggested that developers continue to use the
+     * deprecated API for Android 13. The issue will be fixed for Android 14 (U).
+     */
+    internal inline fun <reified T : Parcelable> Intent.parcelableExtraCompat(key: String): T? = when {
+        Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU -> getParcelableExtra(key, T::class.java)
+        else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
+    }
 }

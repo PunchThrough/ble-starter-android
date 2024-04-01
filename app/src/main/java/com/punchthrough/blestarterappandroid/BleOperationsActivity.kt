@@ -22,10 +22,7 @@ import android.app.AlertDialog
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
-import android.content.Intent
-import android.os.Build
 import android.os.Bundle
-import android.os.Parcelable
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -36,6 +33,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
 import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
+import com.punchthrough.blestarterappandroid.ble.ConnectionManager.parcelableExtraCompat
 import com.punchthrough.blestarterappandroid.ble.isIndicatable
 import com.punchthrough.blestarterappandroid.ble.isNotifiable
 import com.punchthrough.blestarterappandroid.ble.isReadable
@@ -279,17 +277,4 @@ class BleOperationsActivity : AppCompatActivity() {
 
     private fun String.hexToBytes() =
         this.chunked(2).map { it.uppercase(Locale.US).toInt(16).toByte() }.toByteArray()
-
-    /**
-     * A backwards compatible approach of obtaining a parcelable extra from an [Intent] object.
-     *
-     * NOTE: Despite the docs stating that [Intent.getParcelableExtra] is deprecated in Android 13,
-     * Google has confirmed in https://issuetracker.google.com/issues/240585930#comment6 that the
-     * replacement API is buggy for Android 13, and they suggested that developers continue to use the
-     * deprecated API for Android 13. The issue will be fixed for Android 14 (U).
-     */
-    private inline fun <reified T : Parcelable> Intent.parcelableExtraCompat(key: String): T? = when {
-        Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU -> getParcelableExtra(key, T::class.java)
-        else -> @Suppress("DEPRECATION") getParcelableExtra(key) as? T
-    }
 }
