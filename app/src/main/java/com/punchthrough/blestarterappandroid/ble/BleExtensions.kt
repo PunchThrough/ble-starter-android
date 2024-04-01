@@ -79,17 +79,30 @@ fun BluetoothGatt.findCharacteristic(
     }
 }
 
-fun BluetoothGatt.findDescriptor(uuid: UUID): BluetoothGattDescriptor? {
-    services?.forEach { service ->
-        service.characteristics.forEach { characteristic ->
-            characteristic.descriptors?.firstOrNull { descriptor ->
-                descriptor.uuid == uuid
-            }?.let { matchingDescriptor ->
-                return matchingDescriptor
+fun BluetoothGatt.findDescriptor(
+    descriptorUuid: UUID,
+    characteristicUuid: UUID? = null,
+    serviceUuid: UUID? = null
+): BluetoothGattDescriptor? {
+    return if (characteristicUuid != null && serviceUuid != null) {
+        // Use extra context to disambiguate between cases where there could be multiple descriptors
+        // with the same UUID (e.g., the CCCD) belonging to different characteristics or services
+        services
+            ?.firstOrNull { it.uuid == serviceUuid }
+            ?.characteristics?.firstOrNull { it.uuid == characteristicUuid }
+            ?.descriptors?.firstOrNull { it.uuid == descriptorUuid }
+    } else {
+        services?.forEach { service ->
+            service.characteristics.forEach { characteristic ->
+                characteristic.descriptors?.firstOrNull { descriptor ->
+                    descriptor.uuid == descriptorUuid
+                }?.let { matchingDescriptor ->
+                    return matchingDescriptor
+                }
             }
         }
+        return null
     }
-    return null
 }
 
 // BluetoothGattCharacteristic
