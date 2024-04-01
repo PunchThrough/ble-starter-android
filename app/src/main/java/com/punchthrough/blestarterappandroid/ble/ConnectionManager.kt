@@ -16,6 +16,7 @@
 
 package com.punchthrough.blestarterappandroid.ble
 
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
@@ -27,8 +28,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.Parcelable
 import timber.log.Timber
 import java.lang.ref.WeakReference
 import java.util.UUID
@@ -39,9 +42,12 @@ private const val GATT_MIN_MTU_SIZE = 23
 /** Maximum BLE MTU size as defined in gatt_api.h. */
 private const val GATT_MAX_MTU_SIZE = 517
 
+@SuppressLint("MissingPermission") // Assume permissions are handled by UI
 object ConnectionManager {
 
     private var listeners: MutableSet<WeakReference<ConnectionEventListener>> = mutableSetOf()
+    private val listenersAsSet
+        get() = listeners.toSet()
 
     private val deviceGattMap = ConcurrentHashMap<BluetoothDevice, BluetoothGatt>()
     private val operationQueue = ConcurrentLinkedQueue<BleOperationType>()
@@ -67,7 +73,7 @@ object ConnectionManager {
     fun unregisterListener(listener: ConnectionEventListener) {
         // Removing elements while in a loop results in a java.util.ConcurrentModificationException
         var toRemove: WeakReference<ConnectionEventListener>? = null
-        listeners.forEach {
+        listenersAsSet.forEach {
             if (it.get() == listener) {
                 toRemove = it
             }
@@ -235,14 +241,12 @@ object ConnectionManager {
                 return
             }
 
-        // TODO: Make sure each operation ultimately leads to signalEndOfOperation()
-        // TODO: Refactor this into an BleOperationType abstract or extension function
         when (operation) {
             is Disconnect -> with(operation) {
                 Timber.w("Disconnecting from ${device.address}")
                 gatt.close()
                 deviceGattMap.remove(device)
-                listeners.forEach { it.get()?.onDisconnect?.invoke(device) }
+                listenersAsSet.forEach { it.get()?.onDisconnect?.invoke(device) }
                 signalEndOfOperation()
             }
             is CharacteristicWrite -> with(operation) {
@@ -334,6 +338,7 @@ object ConnectionManager {
             is MtuRequest -> with(operation) {
                 gatt.requestMtu(mtu)
             }
+            else -> error("Unsupported operation: $operation")
         }
     }
 
@@ -367,7 +372,7 @@ object ConnectionManager {
                     Timber.w("Discovered ${services.size} services for ${device.address}.")
                     printGattTable()
                     requestMtu(device, GATT_MAX_MTU_SIZE)
-                    listeners.forEach { it.get()?.onConnectionSetupComplete?.invoke(this) }
+                    listenersAsSet.forEach { it.get()?.onConnectionSetupComplete?.invoke(this) }
                 } else {
                     Timber.e("Service discovery failed due to status $status")
                     teardownConnection(gatt.device)
@@ -381,7 +386,7 @@ object ConnectionManager {
 
         override fun onMtuChanged(gatt: BluetoothGatt, mtu: Int, status: Int) {
             Timber.w("ATT MTU changed to $mtu, success: ${status == BluetoothGatt.GATT_SUCCESS}")
-            listeners.forEach { it.get()?.onMtuChanged?.invoke(gatt.device, mtu) }
+            listenersAsSet.forEach { it.get()?.onMtuChanged?.invoke(gatt.device, mtu) }
 
             if (pendingOperation is MtuRequest) {
                 signalEndOfOperation()
@@ -457,7 +462,9 @@ object ConnectionManager {
                 when (status) {
                     BluetoothGatt.GATT_SUCCESS -> {
                         Timber.i("Read descriptor $uuid | value: ${value.toHexString()}")
-                        listeners.forEach { it.get()?.onDescriptorRead?.invoke(gatt.device, this) }
+                        listenersAsSet.forEach {
+                            it.get()?.onDescriptorRead?.invoke(gatt.device, this, value)
+                        }
                     }
                     BluetoothGatt.GATT_READ_NOT_PERMITTED -> {
                         Timber.e("Read not permitted for $uuid!")
@@ -522,7 +529,7 @@ object ConnectionManager {
             when {
                 notificationsEnabled -> {
                     Timber.w("Notifications or indications ENABLED on $charUuid")
-                    listeners.forEach {
+                    listenersAsSet.forEach {
                         it.get()?.onNotificationsEnabled?.invoke(
                             gatt.device,
                             characteristic
@@ -531,7 +538,7 @@ object ConnectionManager {
                 }
                 notificationsDisabled -> {
                     Timber.w("Notifications or indications DISABLED on $charUuid")
-                    listeners.forEach {
+                    listenersAsSet.forEach {
                         it.get()?.onNotificationsDisabled?.invoke(
                             gatt.device,
                             characteristic
@@ -549,7 +556,7 @@ object ConnectionManager {
         override fun onReceive(context: Context, intent: Intent) {
             with(intent) {
                 if (action == BluetoothDevice.ACTION_BOND_STATE_CHANGED) {
-                    val device = getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+                    val device = parcelableExtraCompat<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
                     val previousBondState = getIntExtra(BluetoothDevice.EXTRA_PREVIOUS_BOND_STATE, -1)
                     val bondState = getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, -1)
                     val bondTransition = "${previousBondState.toBondStateDescription()} to " +
