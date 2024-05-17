@@ -24,16 +24,24 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.companion.AssociationInfo
+import android.companion.AssociationRequest
+import android.companion.BluetoothLeDeviceFilter
+import android.companion.CompanionDeviceManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.UiThread
 import androidx.appcompat.app.AppCompatActivity
@@ -43,6 +51,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
 import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
+import com.punchthrough.blestarterappandroid.ble.ConnectionManager.parcelableExtraCompat
 import com.punchthrough.blestarterappandroid.databinding.ActivityMainBinding
 import timber.log.Timber
 
@@ -265,6 +274,109 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton(R.string.quit) { _, _ -> finishAndRemoveTask() }
             .setCancelable(false)
             .show()
+    }
+
+    /*******************************************
+     * Companion Device Pairing (CDP)
+     *******************************************/
+    /**
+     * Handles the result of a user's choice when presented with a list of scan results from CDP.
+     * This way of handling the user's selection is only used for Android 13 and lower.
+     */
+    private val associationRequestResult = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.TIRAMISU) {
+            // NOTE: CompanionDeviceManager.EXTRA_DEVICE was deprecated for API 33 but its replacement
+            // AssociationInfo.getAssociatedDevice is only available on API 34+.
+            // As of the time of writing, it's unclear how API 33 is supposed to get the associated device
+            return@registerForActivityResult
+        }
+        // TODO: Verify the following works on Android 13 (API 33)
+        when (result.resultCode) {
+            Activity.RESULT_OK -> {
+                @Suppress("DEPRECATION")
+                val scanResult = result.data?.parcelableExtraCompat(
+                    CompanionDeviceManager.EXTRA_DEVICE
+                ) as? ScanResult
+                scanResult?.device?.let {
+                    ConnectionManager.connect(it, this@MainActivity)
+                }
+            }
+            else -> Timber.e("Failed with ${result.resultCode}")
+        }
+    }
+
+    /**
+     * Starts a BLE scan powered by the Companion Device Pairing (CDP) feature.
+     */
+    private fun startCdpBleScan() {
+        if (!hasRequiredBluetoothPermissions()) {
+            // Make sure we have BLUETOOTH_CONNECT
+            requestRelevantBluetoothPermissions(PERMISSION_REQUEST_CODE)
+            return
+        }
+
+        val deviceManager = getSystemService(Context.COMPANION_DEVICE_SERVICE) as CompanionDeviceManager
+        val pairingRequest = AssociationRequest.Builder()
+            .addDeviceFilter(
+                BluetoothLeDeviceFilter.Builder()
+                    .setScanFilter(
+                        ScanFilter.Builder().build()
+                    )
+                    .build()
+            )
+            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            deviceManager.associate(
+                pairingRequest,
+                { it.run() },
+                object : CompanionDeviceManager.Callback() {
+                    override fun onAssociationPending(intentSender: IntentSender) {
+                        // API 33+: Device(s) found, association needs to be approved by the user
+                        Timber.w("onAssociationPending with $intentSender")
+                        associationRequestResult.launch(
+                            IntentSenderRequest.Builder(intentSender).build()
+                        )
+                    }
+
+                    override fun onAssociationCreated(associationInfo: AssociationInfo) {
+                        // API 33+: The association is created.
+                        Timber.w("onAssociationCreated with $associationInfo")
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            associationInfo.associatedDevice?.bleDevice?.device?.let {
+                                ConnectionManager.connect(it, this@MainActivity)
+                            }
+                        }
+                    }
+
+                    override fun onFailure(errorMessage: CharSequence?) {
+                        Timber.e("onFailure (API 33+) with $errorMessage")
+                    }
+                }
+            )
+        } else {
+            deviceManager.associate(
+                pairingRequest,
+                @Suppress("OVERRIDE_DEPRECATION")
+                object : CompanionDeviceManager.Callback() {
+                    // Called when a device is found. Launch the IntentSender so the user
+                    // can select the device they want to pair with.
+                    override fun onDeviceFound(chooserLauncher: IntentSender) {
+                        Timber.w("onDeviceFound with $chooserLauncher")
+                        associationRequestResult.launch(
+                            IntentSenderRequest.Builder(chooserLauncher).build()
+                        )
+                    }
+
+                    override fun onFailure(error: CharSequence?) {
+                        Timber.e("onFailure (API <= 32) with $error")
+                    }
+                },
+                null
+            )
+        }
     }
 
     /*******************************************
